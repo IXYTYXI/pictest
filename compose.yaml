@@ -1,0 +1,79 @@
+name: ${COMPOSE_PROJECT_NAME:-upic}
+services:
+  server:
+    image: ${UPIC_IMAGE:-upic-server:local}
+    build:
+      context: .
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    cpus: ${CPU_LIMIT:-1.0}
+    mem_limit: ${MEMORY_LIMIT:-512m}
+    stop_grace_period: 30s
+    ports:
+      - "${BIND_HOST:-127.0.0.1}:${HTTP_PORT:-8080}:8080"
+    environment:
+      LISTEN_ADDR: ":8080"
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?Run scripts/init.sh first}
+      DATA_DIR: /data
+      UPLOAD_TOKEN_FILE: /run/secrets/upload_token
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
+      MAX_STORAGE_BYTES: ${MAX_STORAGE_BYTES:-10737418240}
+      MAX_IMAGE_PIXELS: ${MAX_IMAGE_PIXELS:-20000000}
+      MAX_CONCURRENT_UPLOADS: ${MAX_CONCURRENT_UPLOADS:-2}
+      GOMEMLIMIT: ${GOMEMLIMIT:-384MiB}
+    volumes:
+      - images:/data
+    secrets:
+      - upload_token
+    tmpfs:
+      - /tmp:size=32m,mode=1777,noexec,nosuid
+    healthcheck:
+      test: [CMD, /upic-server, healthcheck]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+  caddy:
+    image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    profiles: [https]
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+      MAX_REQUEST_BYTES: ${MAX_REQUEST_BYTES:-16MB}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    security_opt: [no-new-privileges:true]
+    cpus: 0.5
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+volumes:
+  images:
+    name: ${DATA_VOLUME_NAME:-upic_images}
+  caddy_data:
+  caddy_config:
+secrets:
+  upload_token:
+    file: ./.secrets/upload_token

@@ -1,0 +1,11 @@
+.env
+.secrets/
+.deploy/
+backups/
+data/
+bin/
+coverage.out
+*.test
+.DS_Store
+__pycache__/
+*.pyc

@@ -1,0 +1,31 @@
+name: verify
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: go test -race -count=1 ./...
+      - run: go vet ./...
+      - run: node --check internal/gallery/web/app.js
+      - run: for script in scripts/*.sh; do bash -n "$script"; done
+      - run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /tmp/upic-amd64 ./cmd/upic-server
+      - run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o /tmp/upic-arm64 ./cmd/upic-server
+      - run: ./scripts/init.sh && docker compose config --quiet
+      - run: docker compose build server
+      - run: docker compose up --detach --wait --wait-timeout 90 server
+      - run: curl --fail http://127.0.0.1:8080/readyz
+      - run: python3 scripts/smoke-test.py --url http://127.0.0.1:8080 --token-file .secrets/upload_token
+      - run: python3 tests/docker_acceptance.py --image upic-server:local
+      - if: always()
+        run: docker compose down

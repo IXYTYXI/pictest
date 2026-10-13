@@ -1,0 +1,6 @@
+{$SITE_ADDRESS:localhost} {
+	request_body {
+		max_size {$MAX_REQUEST_BYTES:16MB}
+	}
+	reverse_proxy server:8080
+}
