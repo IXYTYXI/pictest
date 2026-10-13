@@ -163,9 +163,23 @@ JSON 上传体为 `{"file":"BASE64内容","filename":"example.png"}`。错误返
 
 图片链接是公开的，随机地址不等于私有访问控制。管理密钥为单管理员模型，持有者可操作全部图片。公共响应可缓存一小时，删除后的浏览器/CDN缓存可能持续到期；不要上传需要立即撤销访问的资料。首版没有 WebP/HEIC/SVG、缩略图转换、S3、多租户或审计系统。
 
-## 与 AutoDepAwesoem 的关系
+## 在 Awesome Deploy 平台部署
 
-当前工作区的 AutoDepAwesoem 阶段一仅支持无状态容器：根目录只读，没有持久卷，内部网络限制外部对象存储访问。本服务需要独立 Compose 的持久卷，**不能直接提交到该平台获得可靠持久化**，所以没有提供误导性的 `awesome.yaml`。若后续要统一纳管，需要先增加平台的受控持久存储能力，并校准网关上传上限。
+仓库根目录的 `awesome.yaml` 是平台入口，使用 `Dockerfile.awesome` 离线编译 Go 服务，执行 `/upic-server serve`，监听 `8080`，通过 HTTP `/readyz` 检查数据目录可写，并把根路径路由到 `web`。独立 Compose 部署仍使用原来的 `Dockerfile`。
+
+清单要求平台支持 `services.web.storage` 受控持久卷：`images` 挂载 `/data`，同一应用更新时复用，失败清理和版本退役不删除。原始阶段一平台不支持此能力，**必须先升级平台，不能把 DATA_DIR 改成 /tmp 来绕过检查**。平台更新采用先停止旧版、再启动新版的方式，避免两个进程同时写入图片目录；发布失败应恢复旧版。代码回退不能恢复已改变的数据内容或格式，仍需定期备份。
+
+在平台服务器以服务账号设置上传密钥（交互输入，不会出现在仓库或命令参数）：
+
+```bash
+/opt/awesome-deploy/.venv/bin/awesome-deploy --config /etc/awesome-deploy/config.json secret-set \
+  --repository https://github.com/IXYTYXI/pictest \
+  --subdomain upic --name UPLOAD_TOKEN
+```
+
+管理页面提交仓库 `https://github.com/IXYTYXI/pictest.git`、ref `main`、域名前缀 `upic`。已有应用应使用原 `appId` 更新，并创建新的部署任务；重试此前失败任务的固定提交不会读到新 YAML。访问地址为 `https://upic.awesome.guanghexinzhi.cn`；更换前缀时必须同步修改 `app.subdomain`、`PUBLIC_BASE_URL` 和平台秘密配置作用域。
+
+平台网关默认请求上限为 1 MiB，清单因此将单图限制为 **512 KiB**，为 multipart 和 Base64 留出余量；持久卷图片总容量仍为 10 GiB。如需恢复独立 Compose 的 10 MiB 单图上限，先由平台管理员调整该应用网关的请求限制，再修改清单。平台数据卷名由平台派生，不是 Compose 的 `upic_images`，不要对平台卷使用 Compose 的备份/恢复命令；应由平台运维在停止该应用后备份实际数据卷。
 
 ## 开发与验证
 

@@ -36,7 +36,15 @@ python3 tests/docker_acceptance.py --image upic-server:local
 
 容器验收脚本创建隔离的 Compose 项目和随机命名临时卷，不需要生产上传密钥。完整结果日志与网页截图随本次工作区交付记录保存，源码包提供可重复执行的测试程序。
 
-## 尚未验证的生产条件
+## Awesome Deploy 配置补充验证
+
+已补充根目录 `awesome.yaml`（1154 字节），声明 `Dockerfile.awesome`、`serve`、8080、HTTP `/readyz`、根路径路由和 `/data` 持久卷。清单及专用 Dockerfile 已通过扩展持久卷能力后的平台真实解析器；原始 0.1.2 平台不支持 `storage` 字段，不能只推送清单而不升级平台。
+
+`docker build --network=none -f Dockerfile.awesome` 已通过。使用 `tests/awesome_acceptance.py` 实际验证了 UID 65532、只读根目录、512 MiB 内存约束下的上传，以及同一个命名卷经过容器替换、停止/重启后图片元数据和原始字节保持不变。该用例已加入 GitHub Actions。
+
+这项本机测试不等于平台线上发布成功；公网发布应以平台任务最终 `succeeded` 及真实图片访问为准。
+
+## 生产环境验收范围
 
 没有提供目标 Linux 服务器地址及域名，本次未远程上线、未签发公网 TLS 证书，GitHub Actions 工作流也尚未在远端仓库触发。上线后应使用 README 中的公网 `/readyz` 和冒烟命令，验证 DNS、TLS、反向代理和实际磁盘权限。Linux AMD64 已编译但未在 AMD64 宿主机执行容器验收。
 

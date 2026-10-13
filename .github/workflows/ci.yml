@@ -27,5 +27,7 @@ jobs:
       - run: curl --fail http://127.0.0.1:8080/readyz
       - run: python3 scripts/smoke-test.py --url http://127.0.0.1:8080 --token-file .secrets/upload_token
       - run: python3 tests/docker_acceptance.py --image upic-server:local
+      - run: docker build --network=none -f Dockerfile.awesome -t upic-server:awesome .
+      - run: python3 tests/awesome_acceptance.py --image upic-server:awesome
       - if: always()
         run: docker compose down

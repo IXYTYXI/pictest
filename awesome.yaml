@@ -1,0 +1,45 @@
+# Requires Awesome Deploy with managed persistent storage support.
+# Do not replace /data with /tmp: uploaded images must survive deployments.
+schemaVersion: 1
+app:
+  name: uPic 图床
+  description: uPic 兼容上传、网页图库与持久化图片存储
+  subdomain: upic
+services:
+  web:
+    kind: web
+    build:
+      context: .
+      dockerfile: Dockerfile.awesome
+    command: [serve]
+    port: 8080
+    env:
+      LISTEN_ADDR: ":8080"
+      PUBLIC_BASE_URL: "https://upic.awesome.guanghexinzhi.cn"
+      DATA_DIR: "/data"
+      # Keep multipart and Base64 requests below the gateway's 1 MiB limit.
+      MAX_UPLOAD_BYTES: "524288"
+      MAX_STORAGE_BYTES: "10737418240"
+      MAX_IMAGE_PIXELS: "20000000"
+      MAX_CONCURRENT_UPLOADS: "1"
+      GOMEMLIMIT: "384MiB"
+    secretRefs:
+      UPLOAD_TOKEN: UPLOAD_TOKEN
+    storage:
+      name: images
+      mountPath: /data
+    resources:
+      cpu: 1
+      memoryMiB: 512
+    healthcheck:
+      type: http
+      path: /readyz
+      intervalSeconds: 5
+      timeoutSeconds: 3
+      retries: 6
+      startPeriodSeconds: 15
+routes:
+  - path: /
+    match: prefix
+    service: web
+    stripPrefix: false
