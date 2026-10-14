@@ -4,7 +4,7 @@ schemaVersion: 1
 app:
   name: uPic 图床
   description: uPic 兼容上传、网页图库与持久化图片存储
-  subdomain: upic
+  subdomain: upic-t
 services:
   web:
     kind: web
@@ -15,7 +15,7 @@ services:
     port: 8080
     env:
       LISTEN_ADDR: ":8080"
-      PUBLIC_BASE_URL: "https://upic.awesome.guanghexinzhi.cn"
+      PUBLIC_BASE_URL: "https://upic-t.awesome.guanghexinzhi.cn"
       DATA_DIR: "/data"
       # Keep multipart and Base64 requests below the gateway's 1 MiB limit.
       MAX_UPLOAD_BYTES: "524288"
